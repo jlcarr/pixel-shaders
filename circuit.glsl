@@ -7,7 +7,7 @@ precision mediump float;
 
 uniform vec2 u_resolution;
 uniform float u_time;
-const int grid_size = 8;
+const int grid_size = 16;
 const float line_width = 0.2;
 const float grid_width = 0.1;
 
@@ -72,15 +72,28 @@ vec2 rot_field(ivec2 grid_coord){
     return vec2(sin(theta), -cos(theta));
 }
 
+vec2 wave_field(ivec2 grid_coord){
+    vec2 dir = vec2(sin(float(grid_coord.y) * M_PI / 4.0),1.0);
+    float theta = atan(dir.y, dir.x);
+    theta = discretize_theta(theta);
+    return vec2(cos(theta), sin(theta));
+}
+
+vec2 dicontinuous_wave_field(ivec2 grid_coord){
+    vec2 v = wave_field(grid_coord);
+    v *= (1.- 2.*step(3., float(imod(grid_coord.y, 4))));
+    return v;
+}
+
 vec2 vector_field(ivec2 grid_coord){
-    return rad_dir(grid_coord);
+    return dicontinuous_wave_field(grid_coord);
 }
 
 
 // Main drawing
 float draw_discrete_vector_field(ivec2 grid_coord, vec2 grid_pos){
     // current vector
-    vec2 dir = vector_field(grid_coord);
+    vec2 dir = normalize(vector_field(grid_coord));
     float drawing = draw_line(grid_pos, dir);
     drawing *= step(0., dot(grid_pos,dir)); // only point past the center
     //drawing *= 0.0;
@@ -90,14 +103,15 @@ float draw_discrete_vector_field(ivec2 grid_coord, vec2 grid_pos){
     for (int i = -1; i <= 1; i++){
         for (int j = -1; j <= 1; j++){
             ivec2 offset = ivec2(i,j);
-            vec2 dir2 = vector_field(grid_coord + offset);
+            vec2 dir2 = normalize(vector_field(grid_coord + offset));
             float drawing2 = draw_line(grid_pos-2.*vec2(offset), dir2);
             drawing2 *= step(0., dot(grid_pos,normalize(vec2(offset)))); // only point past the center
             drawing2 *= step(0., dot(dir2,-vec2(offset)));
             drawing2 *= step(EPSILON, length(vec2(offset)));
             drawing = max(drawing, drawing2);
             
-            entered += step(1.-EPSILON, dot(normalize(dir2),-normalize(vec2(offset))));
+            entered += step(1.-EPSILON, dot(dir2, -normalize(vec2(offset)))) //
+                * (1.-step(1.-EPSILON, dot(-dir2, dir)));
     	}
     }
 
