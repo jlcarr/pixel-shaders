@@ -11,8 +11,14 @@ const int grid_size = 16;
 const float line_width = 0.2;
 const float grid_width = 0.1;
 
+
 int imod(int a, int b) {
     return a - b*int(a/b);
+}
+
+float rand(vec2 st) {
+    //return fract(sin(dot(st,vec2(12.9898,78.233)))*43758.5453123);
+    return fract(sin(dot(st,vec2(12.34,56.78)))*91.011);
 }
 
 
@@ -41,9 +47,8 @@ float rad_theta(ivec2 grid_coord){
 }
 
 float discretize_theta(float theta){
-    return floor(theta * 8.0 / (2.0 * M_PI) + 0.5) * (2.0 * M_PI) / 8.0;
+    return floor(theta * 8.0 / (2.0 * M_PI) + 0.5) * 2.0 * M_PI / 8.0;
 }
-
 
 float grid_rad(ivec2 grid_coord){
     vec2 pos_vec = vec2(2*grid_coord - grid_size+1)/2.0;
@@ -85,8 +90,26 @@ vec2 dicontinuous_wave_field(ivec2 grid_coord){
     return v;
 }
 
+vec2 random_NS_field(ivec2 grid_coord){
+    vec2 result = vec2(0.0, 1.0);
+    float random_v = rand(vec2(grid_coord));
+
+    result += vec2(1., 0.) * step(0.5,random_v);
+    return result;
+}
+
+vec2 random_rad_dir(ivec2 grid_coord){
+    float theta = rad_theta(grid_coord);
+    theta = discretize_theta(theta);
+    
+    float random_v = rand(vec2(grid_coord));
+    theta += 2.0 * M_PI / 8.0 * (step(0.9, random_v) + step(0.1, random_v) - 1.);
+    
+    return vec2(cos(theta), sin(theta));
+}
+
 vec2 vector_field(ivec2 grid_coord){
-    return dicontinuous_wave_field(grid_coord);
+    return normalize(random_rad_dir(grid_coord));
 }
 
 
@@ -99,6 +122,7 @@ float draw_discrete_vector_field(ivec2 grid_coord, vec2 grid_pos){
     //drawing *= 0.0;
     
     float entered = 0.0;
+    
     
     for (int i = -1; i <= 1; i++){
         for (int j = -1; j <= 1; j++){
@@ -114,14 +138,16 @@ float draw_discrete_vector_field(ivec2 grid_coord, vec2 grid_pos){
                 * (1.-step(1.-EPSILON, dot(-dir2, dir)));
     	}
     }
+    
 
-    //
+    // anulus
     entered = step(EPSILON, entered);
     float annus = draw_anulus(drawing, grid_pos, vec2(0.0));
     drawing = (1.-entered) * annus + entered*drawing;
     
     return drawing;
 }
+
 
 void main(void) {
 	vec2 pos = gl_FragCoord.xy/u_resolution.xy;
@@ -133,7 +159,6 @@ void main(void) {
     vec2 grid_pos = mod(pos, grid_length);
     grid_pos = (grid_pos - grid_length/2.0)*float(grid_size);
     
-    //if (imod(grid_coord.x, 2) == imod(grid_coord.y, 2)) grid_pos.xy = grid_pos.yx;
     
     // main drawing
     float drawing = draw_discrete_vector_field(grid_coord, grid_pos);
@@ -149,8 +174,9 @@ void main(void) {
     drawing *= 1.-0.5*step(float(rad)/float(grid_size/2), length(pos));
     
     
-    //if (grid_rad(grid_coord) <= float(rad) && grid_rad(grid_coord) > float(rad-1)) drawing = draw_anulus(drawing, grid_pos, vec2(0.0));
+    vec3 color = vec3(0.);
+    color += vec3(1.-drawing);
     
-	gl_FragColor = vec4(1.0-vec3(drawing), 1.0);
+	gl_FragColor = vec4(color, 1.0);
 }
 
