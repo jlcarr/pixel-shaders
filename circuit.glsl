@@ -18,7 +18,7 @@ int imod(int a, int b) {
 
 float rand(vec2 st) {
     //return fract(sin(dot(st,vec2(12.9898,78.233)))*43758.5453123);
-    return fract(sin(dot(st,vec2(12.34,56.78)))*91.011);
+    return fract(sin(dot(st,vec2(12.34,56.78)))*81.011);
 }
 
 
@@ -34,6 +34,16 @@ float draw_anulus(float orig, vec2 pos, vec2 center){
     if (dist < line_width * 3.0 / 2.0) orig = 1.0;
     if (dist < line_width / 2.0) orig = 0.0;
     return orig;
+}
+
+float draw_line_animated(vec2 pos, vec2 dir, float t){
+    vec2 proj = dot(pos, dir) / length(dir) * normalize(dir);
+    float result = 1. - step(line_width, length(pos - proj)); // px is on the line
+    result *= step(0., dot(pos, dir)); // is past the center
+    result *= 1.-step(t*dot(dir, dir), dot(pos, dir)); // timer
+    
+    //result = draw_anulus(result, pos, t*dir);
+    return result;
 }
 
 float draw_grid(vec2 pos){
@@ -109,15 +119,23 @@ vec2 random_rad_dir(ivec2 grid_coord){
 }
 
 vec2 vector_field(ivec2 grid_coord){
-    return normalize(random_rad_dir(grid_coord));
+    return random_rad_dir(grid_coord);
 }
 
 
 // Main drawing
 float draw_discrete_vector_field(ivec2 grid_coord, vec2 grid_pos){
+    // timing
+    float t = mod(u_time, float(1+grid_size/2));
+    vec2 float_grid_coord = vec2(2*grid_coord - grid_size+1)/2.0;
+    float r = max(abs(float_grid_coord.x), abs(float_grid_coord.y));
+    float curr_t = clamp(2.*(t-r-.5)*step(0., t-r-.5), 0., 2.);
+    float curr_t2 = clamp(2.*(t-r+.5)*step(0., t-r+.5), 0., 2.);
+    
     // current vector
     vec2 dir = normalize(vector_field(grid_coord));
-    float drawing = draw_line(grid_pos, dir);
+    float line_len = length(vec2(bool(dir.x), bool(dir.y)));
+    float drawing = draw_line_animated(grid_pos, line_len*dir, curr_t);
     drawing *= step(0., dot(grid_pos,dir)); // only point past the center
     //drawing *= 0.0;
     
@@ -128,7 +146,9 @@ float draw_discrete_vector_field(ivec2 grid_coord, vec2 grid_pos){
         for (int j = -1; j <= 1; j++){
             ivec2 offset = ivec2(i,j);
             vec2 dir2 = normalize(vector_field(grid_coord + offset));
-            float drawing2 = draw_line(grid_pos-2.*vec2(offset), dir2);
+            float line_len2 = length(vec2(bool(dir2.x), bool(dir2.y)));
+            //float drawing2 = draw_line(grid_pos-2.*vec2(offset), dir2);
+            float drawing2 = draw_line_animated(grid_pos-2.*vec2(offset), line_len2*dir2, curr_t2);
             drawing2 *= step(0., dot(grid_pos,normalize(vec2(offset)))); // only point past the center
             drawing2 *= step(0., dot(dir2,-vec2(offset)));
             drawing2 *= step(EPSILON, length(vec2(offset)));
@@ -142,6 +162,8 @@ float draw_discrete_vector_field(ivec2 grid_coord, vec2 grid_pos){
 
     // anulus
     entered = step(EPSILON, entered);
+    entered = max(entered, 1.-step(0., t-r-.5));
+    drawing = max(drawing, step(0.,line_width-length(grid_pos))*step(0., t-r-.5));
     float annus = draw_anulus(drawing, grid_pos, vec2(0.0));
     drawing = (1.-entered) * annus + entered*drawing;
     
@@ -164,14 +186,20 @@ void main(void) {
     float drawing = draw_discrete_vector_field(grid_coord, grid_pos);
     
     
+    float rad = mod(u_time, float(grid_size/4));
+    //drawing *= 1.-step(rad, abs(pos.x)+abs(pos.y));
+    
+    
     //draw grid;
     float grid_drawing = draw_grid(grid_pos);
     drawing = max(drawing, grid_drawing);
     
     // circle boundary
-    const int rad = grid_size/2;
+    /*
+    int rad = int(mod(u_time, float(grid_size)));
     drawing *= 1.-step(float(rad), grid_rad(grid_coord));
     drawing *= 1.-0.5*step(float(rad)/float(grid_size/2), length(pos));
+    */
     
     
     vec3 color = vec3(0.);
