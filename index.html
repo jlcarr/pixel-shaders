@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Shader Demos</title>
+		<style>
+			body {
+				background-color: black;
+				color: white;
+			}
+			canvas {
+				border: 1px solid black;
+				outline: 1px solid white;
+				padding: 0;
+				margin: auto;
+				display: block;
+			}
+		</style>
+		<script>
+			var shaderList = ["polygons.glsl"];
+			var shaderCodes = {};
+			var shaderPrograms = {};
+			
+			var gl = null;
+			var glCanvas = null;
+			
+			window.onload = function () {
+				// Setup the canvas
+				if (glCanvas == null){
+					glCanvas = document.getElementById("glcanvas");
+					gl = glCanvas.getContext("webgl");
+					gl.viewport(0,0, glCanvas.width, glCanvas.height);
+				}
+				
+				// load data
+				var shaderChoice = document.querySelector('input[name="shader-choice"]:checked').value;
+				for (var shader of shaderList){
+					var req = new XMLHttpRequest();
+					req.open("GET", shader, true);
+					req.onreadystatechange = function() {
+						if (req.readyState == 4 && req.status == 200){
+							shaderCodes[shader] = req.responseText;
+							shaderPrograms[shader] = buildShaderProgram(screenVertexShader, shaderCodes[shader]);
+							console.log("loaded " + shader);
+							if (shader == shaderChoice)
+								runShader(shaderPrograms[shader]);
+						}
+					};
+					req.send();
+				}
+			}
+			
+			function runShader(program){
+				gl.useProgram(program);
+				
+				// Create a buffer for compute rect positions
+				var screenBuffer = gl.createBuffer();
+				var screenCoords = new Float32Array([
+					-1, -1,
+					1, -1,
+					-1, 1,
+					-1, 1,
+					1, -1,
+					1, 1,
+				]);
+				gl.bindBuffer(gl.ARRAY_BUFFER, screenBuffer);
+				gl.bufferData(gl.ARRAY_BUFFER, screenCoords, gl.STATIC_DRAW);
+				
+				// Attach the data
+				var positionLocation = gl.getAttribLocation(program, "position");
+				gl.enableVertexAttribArray(positionLocation);
+				gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+				
+				// uniforms scalars
+				var timeLocation = gl.getUniformLocation(program, "u_time");
+				var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+
+				// Animation
+				animation = requestAnimationFrame(drawFrame);
+				
+				function drawFrame(time) {
+					// update the uniforms
+					gl.uniform1f(timeLocation, time/1000);
+					gl.uniform2f(resolutionLocation, gl.canvas.width, gl.canvas.height);
+					// clear the image
+					gl.clearColor(1, 1, 1, 1);
+					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+					// The actual draw
+					gl.drawArrays(gl.TRIANGLES, 0, 6);
+					// next frame
+					animation = requestAnimationFrame(drawFrame);
+				}
+			}
+		
+			// Shader set-up definitions
+			var screenVertexShader = `
+				attribute vec2 position;
+				void main() {
+					gl_Position = vec4(position, 0, 1);
+				}
+			`;
+			var screenFragShader = `
+				void main() {
+					gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+				}
+			`;
+			
+			// Shader building tools from Mozilla
+			function buildShaderProgram(vertexSource, fragmentSource) {
+				var program = gl.createProgram();
+				
+				// Compile the vertex shader
+				var vShader = compileShader(vertexSource, gl.VERTEX_SHADER);
+				if (vShader) gl.attachShader(program, vShader);
+				// Compile the fragment shader
+				var fShader = compileShader(fragmentSource, gl.FRAGMENT_SHADER);
+				if (fShader) gl.attachShader(program, fShader);
+
+				gl.linkProgram(program)
+
+				if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+					console.log("Error linking shader program:");
+					console.log(gl.getProgramInfoLog(program));
+				}
+
+				return program;
+			}
+
+			function compileShader(source, type) {
+				var shader = gl.createShader(type);
+
+				gl.shaderSource(shader, source);
+				gl.compileShader(shader);
+
+				if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+					console.log(`Error compiling ${type === gl.VERTEX_SHADER ? "vertex" : "fragment"} shader:`);
+					console.log(gl.getShaderInfoLog(shader));
+				}
+				return shader;
+			}
+		</script>
+	</head>
+	<body>
+		<h1>Shader Demos</h1>
+		
+		<h2>Result</h2>
+		<canvas id="glcanvas" width="500" height="500" >
+		  Oh no! Your browser doesn't support canvas!
+		</canvas>
+		<br>
+		<h3>Options</h2>
+		<form>
+			<input type="radio" name="shader-choice" id="polygon" value="polygons.glsl" checked>
+			<label for="polygon">Polygon</label>
+		</form>
+	</body>
+</html>
+
+
+
+
