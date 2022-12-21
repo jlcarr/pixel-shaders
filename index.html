@@ -15,15 +15,30 @@
 				display: block;
 			}
 		</style>
+		
 		<script>
-			var shaderList = ["polygons.glsl"];
+			var shaderList = ["polygons.glsl", "circuit.glsl"];
 			var shaderCodes = {};
 			var shaderPrograms = {};
 			
 			var gl = null;
 			var glCanvas = null;
+			var animation = null;
 			
 			window.onload = function () {
+				shaderTemplate = document.getElementById("shader-choice-template");
+				shaderForm = document.getElementById("shader-choice-form");
+				// Setup choices
+				for (var shader of shaderList){
+					var clone = shaderTemplate.content.cloneNode(true);
+					clone.querySelector("input").setAttribute("id", shader);
+					clone.querySelector("input").setAttribute("value", shader);
+					if(shader == shaderList[0]) clone.querySelector("input").checked = true;
+					clone.querySelector("label").setAttribute("for", shader);
+					clone.querySelector("label").innerText = shader;
+					shaderForm.appendChild(clone);
+				}
+				
 				// Setup the canvas
 				if (glCanvas == null){
 					glCanvas = document.getElementById("glcanvas");
@@ -35,7 +50,7 @@
 				var shaderChoice = document.querySelector('input[name="shader-choice"]:checked').value;
 				for (var shader of shaderList){
 					var req = new XMLHttpRequest();
-					req.open("GET", shader, true);
+					req.open("GET", shader, false);
 					req.onreadystatechange = function() {
 						if (req.readyState == 4 && req.status == 200){
 							shaderCodes[shader] = req.responseText;
@@ -90,6 +105,13 @@
 					animation = requestAnimationFrame(drawFrame);
 				}
 			}
+			
+			// UI
+			function shaderChoiceChanged(choiceElement){
+				//console.log(choiceElement);
+				if (animation != null) cancelAnimationFrame(animation);
+				runShader(shaderPrograms[choiceElement.value]);
+			}
 		
 			// Shader set-up definitions
 			var screenVertexShader = `
@@ -138,6 +160,12 @@
 				return shader;
 			}
 		</script>
+		
+		<template id="shader-choice-template">
+			<input type="radio" name="shader-choice" id="" value="" onchange="shaderChoiceChanged(this);">
+			<label for=""></label>
+			<br>
+		</template>
 	</head>
 	<body>
 		<h1>Shader Demos</h1>
@@ -147,10 +175,9 @@
 		  Oh no! Your browser doesn't support canvas!
 		</canvas>
 		<br>
+		
 		<h3>Options</h2>
-		<form>
-			<input type="radio" name="shader-choice" id="polygon" value="polygons.glsl" checked>
-			<label for="polygon">Polygon</label>
+		<form id="shader-choice-form">
 		</form>
 	</body>
 </html>
