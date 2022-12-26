@@ -10,7 +10,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 
 // params
-const int grid_num_cells = 8;
+const int grid_num_cells = 16;
 const float grid_line_width = 0.05;
 const float global_line_width = grid_line_width / float(grid_num_cells);
 
@@ -56,7 +56,8 @@ vec2 rotating_field(vec2 pos){
 float sinusoidal_field(vec2 pos){
     pos *= 1.;
     //pos += vec2(u_time);
-    return sin(2. * M_PI * pos.x / 4.) * sin(2. * M_PI * pos.y / 4.); //* sin(u_time);
+    pos += vec2(cos(u_time), sin(u_time));
+    return sin(2. * M_PI * pos.x / float(grid_num_cells)) * sin(2. * M_PI * pos.y / float(grid_num_cells)); //* sin(u_time);
 }
 
 float scalar_field(vec2 pos){
