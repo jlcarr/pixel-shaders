@@ -17,3 +17,7 @@ Shaders are exceptionally fun and interesting because they are essentially just 
 - https://thebookofshaders.com/
 - https://www.khronos.org/files/webgl/webgl-reference-card-1_0.pdf
 - https://viscircle.de/how-to-play-around-with-fragment-shaders-in-webgl/?lang=en
+### Math
+- https://en.wikipedia.org/wiki/Vector_field
+- https://en.wikipedia.org/wiki/Conservative_vector_field
+- https://en.wikipedia.org/wiki/Streamlines,_streaklines,_and_pathlines
