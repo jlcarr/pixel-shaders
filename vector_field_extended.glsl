@@ -48,16 +48,9 @@ vec3 float2color(float v){
 }
 
 // field operations
-vec2 rad_field(vec2 pos){
-    return pos;
-}
 
 vec2 rotating_field(vec2 pos){
     return vec2(cos(u_time),sin(u_time));
-}
-
-vec2 rotational_field(vec2 pos){
-    return vec2(-pos.y,pos.x);
 }
 
 float sinusoidal_field(vec2 pos){
@@ -83,30 +76,37 @@ vec2 gradient_field(vec2 pos){
 
 vec2 vector_field(vec2 pos){
     return gradient_field(pos);
-	//return rad_field(pos);
-    //return rotational_field(pos);
 	//return rotating_field(pos);
 }
 
 float draw_vector_field(ivec2 grid_cell_coord, vec2 grid_cell_pos){
     float head_length = 1./4.;
+    float result = 0.;
     // setup
     vec2 pos = vec2(grid_cell_coord);
     pos = pos - .5 * sign(pos);
-    // the actual vector field
-    vec2 dir = vector_field(pos);
-    dir = normalize(dir) / sqrt(2.);
-    // drawing
-    float result = 0.;
-    result = max(result, line_seg(grid_cell_pos, vec2(0.), dir));
-    //result = max(result, line_seg(grid_cell_pos, vec2(0.), -dir));
-    // arrowhead
-    result = max(result, line_seg(grid_cell_pos, dir, dir + head_length*rot2d(3.*M_PI/4.)*dir));
-    result = max(result, line_seg(grid_cell_pos, dir, dir + head_length*rot2d(-3.*M_PI/4.)*dir));
-    //caps
-    result = max(result, circle(grid_cell_pos, vec2(0.), grid_line_width / 2.));
-    result = max(result, circle(grid_cell_pos, dir, grid_line_width / 2.));
-    //result = max(result, circle(grid_cell_pos, -dir, grid_line_width / 2.));
+    
+    for (int i = -1; i <= 1; i++){
+        for (int j = -1; j <= 1; j++){
+            // move to cell
+            vec2 pos_offset = vec2(ivec2(i,j));
+            vec2 grid_cell_pos_offset = 2.*vec2(ivec2(i,j));
+            // the actual vector field
+            vec2 dir = vector_field(pos+pos_offset);
+            dir = normalize(dir) * 2.;
+            vec2 dir_offset = dir+grid_cell_pos_offset;
+            // drawing
+            result = max(result, line_seg(grid_cell_pos, grid_cell_pos_offset, dir_offset));
+            //result = max(result, line_seg(grid_cell_pos, vec2(0.), -dir));
+            // arrowhead
+            result = max(result, line_seg(grid_cell_pos, dir_offset, dir_offset + head_length*rot2d(3.*M_PI/4.)*dir));
+            result = max(result, line_seg(grid_cell_pos, dir_offset, dir_offset + head_length*rot2d(-3.*M_PI/4.)*dir));
+            //caps
+            result = max(result, circle(grid_cell_pos, grid_cell_pos_offset, grid_line_width / 2.));
+            result = max(result, circle(grid_cell_pos, dir_offset, grid_line_width / 2.));
+            //result = max(result, circle(grid_cell_pos, -dir, grid_line_width / 2.));
+        }
+    }
     return result;
 }
 
