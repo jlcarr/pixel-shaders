@@ -65,6 +65,34 @@
 					req.send();
 				}
 			}
+
+			function record(){
+				var timeframe = parseFloat(document.getElementById("timeframe").value);
+				var chunks = [];
+				var canvas_stream = glCanvas.captureStream();
+				this.media_recorder = new MediaRecorder(canvas_stream, {mimeType: "video/webm; codecs=vp9"});
+				this.media_recorder.ondataavailable = (e) => chunks.push(e.data);
+				this.media_recorder.start(1000);
+				setTimeout(() => {
+					this.media_recorder.stop();
+
+					var blob = new Blob(chunks, {type: "video/webm" });
+					const recording_url = URL.createObjectURL(blob);
+
+					const a = document.createElement('a');
+					a.style = "display: none;";
+					a.href = recording_url;
+					a.download = "video.webm";
+					document.body.appendChild(a);
+
+					a.click();
+					setTimeout(() => {
+						URL.revokeObjectURL(recording_url);
+						document.body.removeChild(a);
+					}, 0);
+				}, timeframe*1000);
+
+			}
 			
 			function runShader(program){
 				gl.useProgram(program);
@@ -177,7 +205,10 @@
 		  Oh no! Your browser doesn't support canvas!
 		</canvas>
 		<br>
-		
+		<h3>Recording</h3>
+		Timeframe: <input id="timeframe" type="number" value="1"></input> seconds
+		<br>
+		<button onclick="record();">record</button>
 		<h3>Options</h2>
 		<form id="shader-choice-form">
 		</form>
